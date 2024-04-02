@@ -1,44 +1,87 @@
 #include <iostream>
 #include <fstream>
-#include <string>
-using namespace std;
-int rewritesplitwords(string, char);
-string MFN(string stname, int thisyear);
+#include <sstream>
+#include <vector>
+#include <map>
+#include <algorithm>
 
+using namespace std;
+
+struct Name {
+    string stname;
+    string gender;
+    string name;
+    int count;
+};
 
 int rewritesplitwords(string filename, char delimiter) {
-    ifstream file(filename);
-    ofstream outfile("split.txt");
-    string state, name;
-    char gen;
-    int year, cnt;
-    int lineCount = 0;
+    ifstream inputFile(filename);
+    ofstream outputFile("split.txt");
 
-    while (file >> state >> gen >> year >> name >> cnt) {
-        outfile << state << "\t" << gen << "\t" << year << "\t" << name << "\t" << cnt << endl;
-        lineCount++;
+    if (!inputFile.is_open()) {
+        cout << "Error: Unable to open file " << filename << endl;
+        return -1;
     }
 
-    file.close();
-    outfile.close();
+    string line;
+    int cnt = 0;
+    while (getline(inputFile, line)) {
+        ++cnt;
+        stringstream ss(line);
+        string token;
 
-    return lineCount;
+        // Create a struct Name based on split words
+        struct Name nameData;
+        getline(ss, nameData.stname, delimiter);
+        getline(ss, nameData.gender, delimiter);
+        ss >> nameData.count;
+        ss.ignore(); // Skip comma
+        getline(ss, nameData.name, delimiter);
+
+        // Write the struct with spaces (tabs) into the new file
+        outputFile << nameData.stname << "\t" << nameData.gender << "\t"
+                   << nameData.count << "\t" << nameData.name << endl;
+    }
+
+    inputFile.close();
+    outputFile.close();
+
+    return cnt;
 }
 
-string MFN(string stname, int thisyear) {
-    ifstream infile("split.txt");
-    string state, name, MFName;
-    char gen;
-    int year, cnt;
-    int maxCount = 0;
+string MFN(string state, int thisyear) {
+    ifstream inputFile("split.txt");
+    if (!inputFile.is_open()) {
+        cout << "Error: Unable to open file split.txt" << endl;
+        return "";
+    }
 
-    while (infile >> state >> gen >> year >> name >> cnt) {
-        if (state == stname && year == thisyear && cnt > maxCount) {
-            maxCount = cnt;
-            MFName = name;
+    map<string, int> nameCount; // Map to store name and its count
+    string line;
+    while (getline(inputFile, line)) {
+        stringstream ss(line);
+        string stname, gender, name;
+        int count;
+        ss >> stname >> gender >> count >> name;
+
+        // Check if it matches the given state and year
+        if (stname == state && count == thisyear) {
+            // Increment count for the name
+            nameCount[name]++;
         }
     }
 
-    infile.close();
-    return MFName;
+    inputFile.close();
+
+    // Find the most frequently used name
+    string mostFrequentName;
+    int maxCount = 0;
+    for (const auto& pair : nameCount) {
+        if (pair.second > maxCount) {
+            maxCount = pair.second;
+            mostFrequentName = pair.first;
+        }
+    }
+
+    return mostFrequentName;
 }
